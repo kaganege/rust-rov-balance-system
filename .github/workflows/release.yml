@@ -1,0 +1,12 @@
+# TODO: Add auto compile
+
+name: Release
+permissions:
+  contents: write
+on: release
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
