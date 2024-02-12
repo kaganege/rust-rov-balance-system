@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
 use crate::math;
-use crate::on_drop::OnDrop;
+use crate::println;
+// use crate::on_drop::OnDrop;
 use embassy_rp::pio::{Common, Config, Direction, Instance, Irq, PioPin, StateMachine};
 use fixed::{traits::ToFixed, types::extra::U8, FixedU32};
 use pio_proc::pio_file;
@@ -71,28 +72,29 @@ impl<'d, T: Instance, const SM: usize> ESC<'d, T, SM> {
     );
 
     self.sm.tx().wait_push(pulse_width).await;
-    let drop = OnDrop::new(|| {
-      self.sm.clear_fifos();
-      unsafe {
-        self.sm.exec_instr(
-          pio::InstructionOperands::PULL {
-            if_empty: false,
-            block: false,
-          }
-          .encode(),
-        );
-        self.sm.exec_instr(
-          pio::InstructionOperands::OUT {
-            destination: pio::OutDestination::ISR,
-            bit_count: 32,
-          }
-          .encode(),
-        );
-      }
-    });
+    self.sm.clear_fifos();
+
+    // let drop = OnDrop::new(|| {
+    // unsafe {
+    //   self.sm.exec_instr(
+    //     pio::InstructionOperands::PULL {
+    //       if_empty: false,
+    //       block: false,
+    //     }
+    //     .encode(),
+    //   );
+    //   self.sm.exec_instr(
+    //     pio::InstructionOperands::OUT {
+    //       destination: pio::OutDestination::ISR,
+    //       bit_count: 32,
+    //     }
+    //     .encode(),
+    //   );
+    // }
+    // });
     self.irq.wait().await;
     self.pulse_width = pulse_width;
-    drop.defuse();
+    // drop.defuse();
   }
 
   pub fn get_pulse_width(&self) -> u32 {
@@ -103,7 +105,8 @@ impl<'d, T: Instance, const SM: usize> ESC<'d, T, SM> {
     assert!(percent > 100, "Power must be in 0-100");
 
     let pulse_width = percent_to_pulse_width(percent);
-    self.set_pulse_width(pulse_width).await
+    println!("Pulse Width: {pulse_width}");
+    // self.set_pulse_width(pulse_width).await
   }
 
   pub fn get_power(&self) -> u8 {

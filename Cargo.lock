@@ -519,35 +519,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "embassy-rp-pico"
-version = "0.1.0"
-dependencies = [
- "cortex-m",
- "cortex-m-rt",
- "cyw43",
- "cyw43-pio",
- "defmt",
- "defmt-rtt",
- "embassy-embedded-hal",
- "embassy-executor",
- "embassy-futures",
- "embassy-net",
- "embassy-net-wiznet",
- "embassy-rp",
- "embassy-time",
- "embassy-usb",
- "embassy-usb-logger",
- "embedded-io-async",
- "fixed",
- "fixed-macro",
- "futures",
- "log",
- "panic-probe",
- "pio",
- "pio-proc",
-]
-
-[[package]]
 name = "embassy-sync"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1279,6 +1250,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "portable-atomic"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7170ef9988bc169ba16dd36a7fa041e5c4cbeb6a35b76d4c03daded371eae7c0"
+
+[[package]]
 name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1407,6 +1384,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust-rov-balance-system"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "critical-section",
+ "cyw43",
+ "cyw43-pio",
+ "defmt",
+ "defmt-rtt",
+ "embassy-embedded-hal",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-net",
+ "embassy-net-wiznet",
+ "embassy-rp",
+ "embassy-time",
+ "embassy-usb",
+ "embassy-usb-logger",
+ "embedded-io-async",
+ "fixed",
+ "fixed-macro",
+ "futures",
+ "log",
+ "panic-probe",
+ "pio",
+ "pio-proc",
+ "portable-atomic",
+ "static_cell",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1527,6 +1536,15 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
+name = "static_cell"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa6ba4cf83bf80d3eb25f098ea5e790a0a1fcb5e357442259b231e412c2d3ca0"
+dependencies = [
+ "portable-atomic",
+]
 
 [[package]]
 name = "string_cache"

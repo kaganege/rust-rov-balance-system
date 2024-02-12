@@ -1,5 +1,5 @@
 [package]
-name = "embassy-rp-pico"
+name = "rust-rov-balance-system"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 cortex-m = { version = "0.7.6", features = ["inline-asm"] }
 cortex-m-rt = "0.7.0"
+critical-section = "1.1.2"
 cyw43 = { version = "0.1.0", features = ["defmt"] }
 cyw43-pio = { version = "0.1.0", features = ["defmt", "overclock"] }
 defmt = "0.3.6"
@@ -50,6 +51,10 @@ log = "0.4.20"
 panic-probe = { version = "0.3.1", features = ["print-defmt"] }
 pio = "0.2.1"
 pio-proc = "0.2.2"
+portable-atomic = { version = "1.6.0", features = [
+  "unsafe-assume-single-core",
+] }
+static_cell = "2.0.0"
 
 [profile.release]
 debug = 2

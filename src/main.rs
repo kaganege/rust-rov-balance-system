@@ -1,23 +1,21 @@
 #![no_std]
 #![no_main]
 
+use cyw43_pio::PioSpi;
 use embassy_executor as executor;
 use embassy_rp::bind_interrupts;
-use embassy_rp::peripherals::{PIO0, USB};
+use embassy_rp::gpio::{Level, Output};
+use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0, USB};
 use embassy_rp::pio;
 use embassy_rp::usb;
 use embassy_time::Timer;
-use esc::ESC;
+// use esc::ESC;
+use static_cell::StaticCell;
 
 mod esc;
 mod math;
 mod on_drop;
-
-macro_rules! println {
-  ( $( $x:expr ),+ ) => {
-    log::info!($($x),+)
-  };
-}
+mod usb_serial;
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -31,6 +29,27 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
   embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver);
 }
 
+#[embassy_executor::task]
+async fn wifi_task(
+  runner: cyw43::Runner<
+    'static,
+    Output<'static, PIN_23>,
+    PioSpi<'static, PIN_25, PIO0, 0, DMA_CH0>,
+  >,
+) -> ! {
+  runner.run().await
+}
+
+#[executor::task]
+async fn blink_task(control: &'static mut cyw43::Control<'_>) -> ! {
+  loop {
+    control.gpio_set(0, Level::High.into()).await;
+    Timer::after_millis(500).await;
+    control.gpio_set(0, Level::Low.into()).await;
+    Timer::after_millis(500).await;
+  }
+}
+
 #[executor::main]
 async fn main(spawner: executor::Spawner) {
   let p = embassy_rp::init(Default::default());
@@ -38,17 +57,64 @@ async fn main(spawner: executor::Spawner) {
   let usb_driver = usb::Driver::new(p.USB, Irqs);
   spawner.spawn(logger_task(usb_driver)).unwrap();
 
-  let pio::Pio {
-    mut common,
-    irq0: irq,
-    sm0: sm,
-    ..
-  } = pio::Pio::new(p.PIO0, Irqs);
-  let esc = ESC::new(&mut common, sm, irq, p.PIN_2);
+  let fw = include_bytes!("../cyw43-firmware/43439A0.bin");
+  let clm = include_bytes!("../cyw43-firmware/43439A0_clm.bin");
+
+  let pwr = Output::new(p.PIN_23, Level::Low);
+  let cs = Output::new(p.PIN_25, Level::High);
+  let mut pio = pio::Pio::new(p.PIO0, Irqs);
+  let spi = PioSpi::new(
+    &mut pio.common,
+    pio.sm0,
+    pio.irq0,
+    cs,
+    p.PIN_24,
+    p.PIN_29,
+    p.DMA_CH0,
+  );
+
+  static STATE: StaticCell<cyw43::State> = StaticCell::new();
+  let state = STATE.init(cyw43::State::new());
+  let (_net_device, control, runner) = cyw43::new(state, pwr, spi, fw).await;
+  spawner.spawn(wifi_task(runner)).unwrap();
+
+  static CONTROL: StaticCell<cyw43::Control<'_>> = StaticCell::new();
+  let control = CONTROL.init(control);
+  control.init(clm).await;
+  control
+    .set_power_management(cyw43::PowerManagementMode::PowerSave)
+    .await;
+
+  spawner.spawn(blink_task(control)).unwrap();
+
+  // let pio::Pio {
+  //   mut common,
+  //   irq0: irq,
+  //   sm0: sm,
+  //   ..
+  // } = pio::Pio::new(p.PIO0, Irqs);
+  // let motor = ESC::new(&mut pio.common, pio.sm0, pio.irq0, p.PIN_2);
+
+  let mut increase = true;
+  let mut power = 0u8;
 
   loop {
-    println!("Power: {}", esc.get_power());
-    // I don't know, but it doesn't work if we don't wait.
-    Timer::after(Default::default()).await;
+    if power == 0 {
+      increase = true;
+    } else if power == 100 {
+      increase = false;
+    }
+
+    if increase {
+      power += 1;
+    } else {
+      power -= 1;
+    }
+
+    // motor.set_power(power).await;
+
+    println!("Power: {}", power);
+
+    Timer::after_millis(500).await;
   }
 }

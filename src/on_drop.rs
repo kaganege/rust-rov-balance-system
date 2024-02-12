@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use core::mem::{self, MaybeUninit};
 
 pub struct OnDrop<F: FnOnce()> {
