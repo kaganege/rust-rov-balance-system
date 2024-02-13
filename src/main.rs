@@ -111,8 +111,6 @@ async fn main(spawner: executor::Spawner) {
       .set_power(if increase { power + 0.01 } else { power - 0.01 })
       .await;
 
-    // println!("Power: {}", power);
-
     Timer::after_millis(250).await;
   }
 }
