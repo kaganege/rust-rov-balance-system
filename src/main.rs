@@ -5,11 +5,11 @@ use cyw43_pio::PioSpi;
 use embassy_executor as executor;
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
-use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0, USB};
+use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0, PIO1, USB};
 use embassy_rp::pio;
 use embassy_rp::usb;
 use embassy_time::Timer;
-// use esc::ESC;
+use esc::ESC;
 use static_cell::StaticCell;
 
 mod esc;
@@ -22,6 +22,7 @@ use {defmt_rtt as _, panic_probe as _};
 bind_interrupts!(struct Irqs {
   USBCTRL_IRQ => usb::InterruptHandler<USB>;
   PIO0_IRQ_0 => pio::InterruptHandler<PIO0>;
+  PIO1_IRQ_0 => pio::InterruptHandler<PIO1>;
 });
 
 #[executor::task]
@@ -62,6 +63,7 @@ async fn main(spawner: executor::Spawner) {
 
   let pwr = Output::new(p.PIN_23, Level::Low);
   let cs = Output::new(p.PIN_25, Level::High);
+
   let mut pio = pio::Pio::new(p.PIO0, Irqs);
   let spi = PioSpi::new(
     &mut pio.common,
@@ -87,34 +89,30 @@ async fn main(spawner: executor::Spawner) {
 
   spawner.spawn(blink_task(control)).unwrap();
 
-  // let pio::Pio {
-  //   mut common,
-  //   irq0: irq,
-  //   sm0: sm,
-  //   ..
-  // } = pio::Pio::new(p.PIO0, Irqs);
-  // let motor = ESC::new(&mut pio.common, pio.sm0, pio.irq0, p.PIN_2);
+  let mut pio1 = pio::Pio::new(p.PIO1, Irqs);
+  let mut motor = ESC::new(&mut pio1.common, pio1.sm0, pio1.irq0, p.PIN_2);
+
+  motor.attach().await;
 
   let mut increase = true;
-  let mut power = 0u8;
 
   loop {
-    if power == 0 {
+    let power = motor.get_power();
+
+    if power == 0.0 {
       increase = true;
-    } else if power == 100 {
+    } else if power == 1.0 {
       increase = false;
     }
 
-    if increase {
-      power += 1;
-    } else {
-      power -= 1;
-    }
+    println!("Power: {:.2}", power);
 
-    // motor.set_power(power).await;
+    motor
+      .set_power(if increase { power + 0.01 } else { power - 0.01 })
+      .await;
 
-    println!("Power: {}", power);
+    // println!("Power: {}", power);
 
-    Timer::after_millis(500).await;
+    Timer::after_millis(250).await;
   }
 }
