@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
 use crate::math;
-// use crate::println;
-// use crate::on_drop::OnDrop;
 use embassy_rp::pio::{Common, Config, Direction, Instance, Irq, PioPin, StateMachine};
 use fixed::{traits::ToFixed, types::extra::U8, FixedU32};
 use pio_proc::pio_file;
@@ -27,6 +25,10 @@ fn pulse_width_to_percent(pulse_width: u32) -> f64 {
     (MIN_PULSE_WIDTH as f64, MAX_PULSE_WIDTH as f64),
     (0.0, 1.0),
   )
+}
+
+fn us_to_pio_cycles(us: u32) -> u32 {
+  us * (embassy_rp::clocks::clk_sys_freq() / 1_000_000)
 }
 
 pub struct ESC<'d, T: Instance, const SM: usize> {
@@ -70,6 +72,19 @@ impl<'d, T: Instance, const SM: usize> ESC<'d, T, SM> {
     if !self.sm.is_enabled() {
       self.sm.set_enable(false);
       self.sm.set_config(&self.config);
+
+      // Convert this into Rust code.
+      // pio_sm_put_blocking(_pio, _sm, RP2040::usToPIOCycles(REFRESH_INTERVAL) / 3);
+
+      self
+        .sm
+        .tx()
+        .wait_push(us_to_pio_cycles(REFRESH_INTERVAL) / 3)
+        .await;
+      // self
+      //   .set_pulse_width(us_to_pio_cycles(REFRESH_INTERVAL) / 3)
+      //   .await;
+      // self.set_frequency(50);
 
       unsafe {
         self.sm.exec_instr(
@@ -115,10 +130,11 @@ impl<'d, T: Instance, const SM: usize> ESC<'d, T, SM> {
     self.set_power(0.0).await;
   }
 
-  fn detach(&mut self) {
-    if self.sm.is_enabled() {
-      self.sm.set_enable(false);
-    }
+  async fn detach(&mut self) {
+    self.set_pulse_width(0).await;
+    embassy_time::Timer::after_micros(5).await; // Avoid race condition
+
+    self.sm.set_enable(false);
   }
 
   fn set_frequency(&mut self, freq: u32) {
@@ -133,11 +149,23 @@ impl<'d, T: Instance, const SM: usize> ESC<'d, T, SM> {
   }
 
   async fn set_pulse_width(&mut self, pulse_width: u32) {
-    self.pulse_width = pulse_width;
-    self.sm.tx().wait_push(pulse_width).await;
+    if self.sm.is_enabled() {
+      self.pulse_width = pulse_width;
+      crate::println!(
+        "Pulse Width: {pulse_width}, Cycles: {}",
+        us_to_pio_cycles(pulse_width) / 3
+      );
+
+      self.sm.clear_fifos(); // Remove any old updates that haven't yet taken effect
+      self
+        .sm
+        .tx()
+        .wait_push(us_to_pio_cycles(pulse_width) / 3)
+        .await;
+    }
   }
 
-  /// Specify a value between 0.0 - 0.1
+  /// Specify a value between 0.0 - 1.0
   pub async fn set_power(&mut self, percent: f64) {
     let pulse_width = percent_to_pulse_width(percent.clamp(0.0, 1.0));
 

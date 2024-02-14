@@ -43,11 +43,13 @@ async fn wifi_task(
 
 #[executor::task]
 async fn blink_task(control: &'static mut cyw43::Control<'_>) -> ! {
+  let interval = 500;
+
   loop {
     control.gpio_set(0, Level::High.into()).await;
-    Timer::after_millis(500).await;
+    Timer::after_millis(interval).await;
     control.gpio_set(0, Level::Low.into()).await;
-    Timer::after_millis(500).await;
+    Timer::after_millis(interval).await;
   }
 }
 
@@ -83,9 +85,7 @@ async fn main(spawner: executor::Spawner) {
   static CONTROL: StaticCell<cyw43::Control<'_>> = StaticCell::new();
   let control = CONTROL.init(control);
   control.init(clm).await;
-  control
-    .set_power_management(cyw43::PowerManagementMode::PowerSave)
-    .await;
+  control.set_power_management(Default::default()).await;
 
   spawner.spawn(blink_task(control)).unwrap();
 
@@ -94,23 +94,25 @@ async fn main(spawner: executor::Spawner) {
 
   motor.attach().await;
 
-  let mut increase = true;
+  // let mut increase = true;
+
+  motor.set_power(1.0).await;
 
   loop {
-    let power = motor.get_power();
+    // let power = motor.get_power();
 
-    if power == 0.0 {
-      increase = true;
-    } else if power == 1.0 {
-      increase = false;
-    }
+    // if power == 0.0 {
+    //   increase = true;
+    // } else if power == 1.0 {
+    //   increase = false;
+    // }
 
-    println!("Power: {:.2}", power);
+    // println!("Power: {:.2}", power);
 
-    motor
-      .set_power(if increase { power + 0.01 } else { power - 0.01 })
-      .await;
+    // motor
+    //   .set_power(if increase { power + 0.01 } else { power - 0.01 })
+    //   .await;
 
-    Timer::after_millis(250).await;
+    Timer::after(Default::default()).await;
   }
 }
