@@ -56,8 +56,8 @@ impl<'d, T: Instance, const SM: usize> ESC<'d, T, SM> {
     sm.set_pin_dirs(Direction::Out, &pins);
 
     let mut config = Config::default();
-    config.set_out_pins(&pins);
-    config.clock_divider = (125_000_000 / (100 * 136)).to_fixed();
+    // config.clock_divider = (125_000_000 / (100 * 136)).to_fixed();
+    config.set_set_pins(&pins);
     config.use_program(&pio.load_program(&prg.program), &pins);
 
     Self {

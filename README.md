@@ -17,7 +17,7 @@ Rust adaptation to [kaganege/rov-balance-system](https://github.com/kaganege/rov
 > rustup target install thumbv6m-none-eabi
 > ```
 
-1. Plug Pico into the computer in boot mode.
+1. Plug the Pico into the computer in boot mode.
 2. Compile and upload the code with
 
     ```sh
